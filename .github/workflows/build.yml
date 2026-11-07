@@ -1,0 +1,53 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --user --upgrade Cython==0.29.36 buildozer
+
+    - name: Initialize Buildozer Config
+      run: |
+        buildozer init || true
+        sed -i 's/# title =.*/title = J.A.R.V.I.S./' buildozer.spec
+        sed -i 's/# package.name =.*/package.name = jarvis/' buildozer.spec
+        sed -i 's/# package.domain =.*/package.domain = org.stark/' buildozer.spec
+        sed -i 's/# source.include_exts =.*/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
+        sed -i 's/# requirements =.*/requirements = python3,flet,requests,urllib3,certifi,idna,charset-normalizer/' buildozer.spec
+        sed -i 's/# orientation =.*/orientation = portrait/' buildozer.spec
+        sed -i 's/# android.permissions =.*/android.permissions = INTERNET,RECORD_AUDIO/' buildozer.spec
+        sed -i 's/# android.api =.*/android.api = 33/' buildozer.spec
+        sed -i 's/# android.minapi =.*/android.minapi = 24/' buildozer.spec
+        sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
+        sed -i 's/# android.archs =.*/android.archs = arm64-v8a/' buildozer.spec
+
+    - name: Build APK with Buildozer
+      run: |
+        buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: bin/*.apk
